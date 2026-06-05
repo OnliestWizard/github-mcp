@@ -1,0 +1,29 @@
+{
+  "name": "github-mcp",
+  "version": "1.0.0",
+  "description": "GitHub MCP server — connect your repos to Claude",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "github-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "prepare": "npm run build"
+  },
+  "keywords": ["mcp", "github", "claude", "anthropic", "model-context-protocol"],
+  "author": "Matt",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@octokit/rest": "^21.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}
