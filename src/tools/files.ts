@@ -39,17 +39,34 @@ export async function getTree(args: {
   branch?: string;
   recursive?: boolean;
 }) {
-  const repo = await octokit.rest.repos.get({
+  const repoData = await octokit.rest.repos.get({
     owner: args.owner,
     repo: args.repo,
   });
 
-  const branch = args.branch || repo.data.default_branch;
+  const branchName = args.branch || repoData.data.default_branch;
+
+  // Resolve branch → commit SHA → tree SHA
+  const branchRef = await octokit.rest.git.getRef({
+    owner: args.owner,
+    repo: args.repo,
+    ref: `heads/${branchName}`,
+  });
+
+  const commitSha = branchRef.data.object.sha;
+
+  const commit = await octokit.rest.git.getCommit({
+    owner: args.owner,
+    repo: args.repo,
+    commit_sha: commitSha,
+  });
+
+  const treeSha = commit.data.tree.sha;
 
   const { data } = await octokit.rest.git.getTree({
     owner: args.owner,
     repo: args.repo,
-    tree_sha: branch,
+    tree_sha: treeSha,
     recursive: args.recursive ? "1" : undefined,
   });
 
