@@ -11,6 +11,9 @@ import { listRepos, getRepo } from "./tools/repos";
 import { getFile, getTree, getReadme } from "./tools/files";
 import { getCommits } from "./tools/commits";
 import { searchCode } from "./tools/search";
+import { listIssues, getIssue, createIssue } from "./tools/issues";
+import { listPullRequests, getPullRequest, createPullRequest } from "./tools/pulls";
+import { getSession, setDefault } from "./session";
 
 const server = new Server(
   { name: "github-mcp", version: "1.0.0" },
@@ -131,6 +134,120 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["query"],
       },
     },
+    {
+      name: "list_issues",
+      description: "List issues for a repository",
+      inputSchema: {
+        type: "object",
+        properties: {
+          owner: { type: "string", description: "Repository owner/username" },
+          repo: { type: "string", description: "Repository name" },
+          state: {
+            type: "string",
+            enum: ["open", "closed", "all"],
+            description: "Filter by state (default: open)",
+          },
+          limit: { type: "number", description: "Number of issues to return (default: 20)" },
+        },
+        required: ["owner", "repo"],
+      },
+    },
+    {
+      name: "get_issue",
+      description: "Get details for a specific issue",
+      inputSchema: {
+        type: "object",
+        properties: {
+          owner: { type: "string", description: "Repository owner/username" },
+          repo: { type: "string", description: "Repository name" },
+          issue_number: { type: "number", description: "Issue number" },
+        },
+        required: ["owner", "repo", "issue_number"],
+      },
+    },
+    {
+      name: "create_issue",
+      description: "Create a new issue in a repository",
+      inputSchema: {
+        type: "object",
+        properties: {
+          owner: { type: "string", description: "Repository owner/username" },
+          repo: { type: "string", description: "Repository name" },
+          title: { type: "string", description: "Issue title" },
+          body: { type: "string", description: "Issue body/description" },
+          labels: {
+            type: "array",
+            items: { type: "string" },
+            description: "Labels to apply",
+          },
+        },
+        required: ["owner", "repo", "title"],
+      },
+    },
+    {
+      name: "list_pull_requests",
+      description: "List pull requests for a repository",
+      inputSchema: {
+        type: "object",
+        properties: {
+          owner: { type: "string", description: "Repository owner/username" },
+          repo: { type: "string", description: "Repository name" },
+          state: {
+            type: "string",
+            enum: ["open", "closed", "all"],
+            description: "Filter by state (default: open)",
+          },
+          limit: { type: "number", description: "Number of PRs to return (default: 20)" },
+        },
+        required: ["owner", "repo"],
+      },
+    },
+    {
+      name: "get_pull_request",
+      description: "Get details for a specific pull request",
+      inputSchema: {
+        type: "object",
+        properties: {
+          owner: { type: "string", description: "Repository owner/username" },
+          repo: { type: "string", description: "Repository name" },
+          pull_number: { type: "number", description: "Pull request number" },
+        },
+        required: ["owner", "repo", "pull_number"],
+      },
+    },
+    {
+      name: "get_session",
+      description: "Get current session state — shows authenticated user and any saved defaults",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "set_context",
+      description: "Save a default owner or repo so you don't have to specify it every call",
+      inputSchema: {
+        type: "object",
+        properties: {
+          defaultOwner: { type: "string", description: "Default GitHub username/org" },
+          defaultRepo: { type: "string", description: "Default repository name" },
+        },
+      },
+    },
+    {
+      name: "create_pull_request",
+      description: "Create a new pull request",
+      inputSchema: {
+        type: "object",
+        properties: {
+          owner: { type: "string", description: "Repository owner/username" },
+          repo: { type: "string", description: "Repository name" },
+          title: { type: "string", description: "PR title" },
+          head: { type: "string", description: "Branch to merge from" },
+          base: { type: "string", description: "Branch to merge into" },
+          body: { type: "string", description: "PR description" },
+          draft: { type: "boolean", description: "Open as draft PR" },
+        },
+        required: ["owner", "repo", "title", "head", "base"],
+      },
+    },
   ],
 }));
 
@@ -163,6 +280,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "search_code":
         result = await searchCode(args as any);
         break;
+      case "list_issues":
+        result = await listIssues(args as any);
+        break;
+      case "get_issue":
+        result = await getIssue(args as any);
+        break;
+      case "create_issue":
+        result = await createIssue(args as any);
+        break;
+      case "list_pull_requests":
+        result = await listPullRequests(args as any);
+        break;
+      case "get_pull_request":
+        result = await getPullRequest(args as any);
+        break;
+      case "create_pull_request":
+        result = await createPullRequest(args as any);
+        break;
+      case "get_session":
+        result = getSession() ?? { message: "No session yet — run any tool to initialize" };
+        break;
+      case "set_context": {
+        const a = args as { defaultOwner?: string; defaultRepo?: string };
+        if (a.defaultOwner) setDefault("defaultOwner", a.defaultOwner);
+        if (a.defaultRepo) setDefault("defaultRepo", a.defaultRepo);
+        result = getSession();
+        break;
+      }
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
