@@ -1,24 +1,33 @@
-import { octokit, getAuthenticatedUser } from "../github";
+import { octokit } from "../github";
 
-export async function listRepos(args: { type?: string; sort?: string }) {
-  const user = await getAuthenticatedUser();
-  const { data } = await octokit.rest.repos.listForUser({
-    username: user.login,
-    type: (args.type as any) || "all",
-    sort: (args.sort as any) || "updated",
-    per_page: 100,
-  });
+export async function listRepos(args: { type?: string; sort?: string; page?: number }) {
+  const allRepos: any[] = [];
+  let page = args.page || 1;
 
-  return data.map((repo) => ({
-    name: repo.name,
-    full_name: repo.full_name,
-    description: repo.description,
-    language: repo.language,
-    private: repo.private,
-    stars: repo.stargazers_count,
-    updated_at: repo.updated_at,
-    url: repo.html_url,
-  }));
+  while (true) {
+    const { data } = await octokit.rest.repos.listForAuthenticatedUser({
+      type: (args.type as any) || "all",
+      sort: (args.sort as any) || "updated",
+      per_page: 100,
+      page,
+    });
+
+    allRepos.push(...data.map((repo) => ({
+      name: repo.name,
+      full_name: repo.full_name,
+      description: repo.description,
+      language: repo.language,
+      private: repo.private,
+      stars: repo.stargazers_count,
+      updated_at: repo.updated_at,
+      url: repo.html_url,
+    })));
+
+    if (data.length < 100) break;
+    page++;
+  }
+
+  return allRepos;
 }
 
 export async function getRepo(args: { owner: string; repo: string }) {
